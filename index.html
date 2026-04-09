@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+font-family: Arial;
+background: linear-gradient(135deg, #667eea, #764ba2);
+text-align: center;
+color: white;
+}
+td button {
+margin: 2px;
+padding: 6px 10px;
+border-radius: 6px;
+border: none;
+cursor: pointer;
+}
+
+td button:hover {
+opacity: 0.8;
+}
+
+.admin-btn {
+position: fixed;
+bottom: 20px;
+right: 20px;
+
+width: 60px;
+height: 60px;
+border-radius: 50%;
+
+background: #667eea;
+color: white;
+font-size: 24px;
+
+border: none;
+cursor: pointer;
+
+box-shadow: 0 5px 15px rgba(0,0,0,0,3);
+}
+
+.admin-btn:hover {
+background: #5a67d8;
+}
+
+.container {
+background: white;
+color: black;
+padding: 20px;
+border-radius: 12px;
+max-width: 500px;
+margin: 20px auto;
+}
+
+input, button {
+padding: 12px;
+margin: 5px;
+width: 90%;
+}
+
+table {
+width: 100%;
+margin-top: 20px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+<h1>🏆 Vm-Tips</h1>
+
+<button class="admin-btn" onclick="toggleAdmin()">🔒</button>
+
+<div id="adminPanel" style="display:none; margin-top:20px">
+    <input id="nameInput" placeholder="Namn">
+    <input id="adminPassword" type="password" placeholder="Admin lösenord">
+    <button onclick="addPlayer()">Lägg till spelare</button>
+</div>
+
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Namn</th>
+<th>Poäng</th>
+<th id="adminCol">Admin</th>
+</tr>
+</thead>
+<tbody id="table"></tbody>
+</table>
+</div>
+
+<script>
+ let isAdminOpen = false;   
+const API = "https://leaderboard-vkgg.onrender.com";
+
+async function loadPlayers() {
+    document.getElementById("adminCol").style.display = isAdminOpen ? "" : "none";
+const res = await fetch(API + "/players");
+const players = await res.json();
+
+const table = document.getElementById("table");
+table.innerHTML = "";
+
+players.forEach((p, i) => {
+table.innerHTML += `
+<tr>
+<td>${i+1}</td>
+<td>${p.name}</td>
+<td>${p.score}</td>
+
+${isAdminOpen ? `
+<td>
+<button onclick="addPoint(${p.id})">+</button>
+<button onclick="removePoint(${p.id})">-</button>
+<button onclick="deletePlayer(${p.id})">delete</button>
+</td>
+`
+: ""}
+
+</tr>
+`;
+});
+}
+
+
+async function addPlayer() {
+const name = document.getElementById("nameInput").value;
+const password = document.getElementById("adminPassword").value;
+
+await fetch(API + "/players", {
+method: "POST",
+headers: {
+"Content-Type": "application/json",
+"x-admin-password": password
+},
+body: JSON.stringify({ name })
+});
+
+loadPlayers();
+}
+
+async function addPoint(id) {
+const password = document.getElementById("adminPassword").value;
+
+await fetch(API + `/players/${id}/score`, {
+method: "POST",
+headers: { "x-admin-password": password }
+});
+
+loadPlayers();
+}
+
+
+function toggleAdmin() {
+const panel = document.getElementById("adminPanel");
+
+isAdminOpen = !isAdminOpen;
+
+console.log("admin mode", isAdminOpen);
+
+panel.style.display = isAdminOpen ? "block" : "none";
+
+loadPlayers();
+}
+
+async function removePoint(id) {
+    const password = document.getElementById("adminPassword").value;
+
+    await fetch(API + `/players/${id}/minus`, {
+        method: "Post",
+        headers: { "x-admin-password": password }
+       });
+       
+       loadPlayers();
+}
+
+async function deletePlayer(id) {
+    const confirmDelete = confirm (" Är du säker?");
+    if (!confirmDelete) return;
+const password = document.getElementById("adminPassword").value;
+
+await fetch(API + `/players/${id}`, {
+method: "DELETE",
+headers: { "x-admin-password": password }
+});
+
+loadPlayers();
+}
+
+loadPlayers();
+</script>
+
+</body>
+</html>
